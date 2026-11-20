@@ -267,7 +267,21 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
 <!-- قسم 3: غرفة الأونلاين -->
 <div class="modal" id="onlineModal" style="display:none">
  <div class="card">
-  <h2>🌍 الأونلاين — 5 ضد 5</h2><div style="font-size:12px;color:#facc15;background:#1e293b;padding:6px;border-radius:8px;margin-bottom:6px">⚔️ روم 5 ضد 5 — 10 لعيبة: <b>5 حرامية</b> ضد <b>5 بوليس</b></div>
+  <h2>🌍 الأونلاين — من 1 ضد 1 لحد 10 ضد 10</h2>
+  <div style="font-size:12px;color:#facc15;background:#1e293b;padding:6px;border-radius:8px;margin-bottom:6px">⚔️ اختار حجم الروم — الجيم هيتقسم تلقائي</div>
+  <div id="teamSizeGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:8px">
+    <button class="btn" data-size="1" style="padding:6px;font-size:11px">1 ضد 1</button>
+    <button class="btn" data-size="2" style="padding:6px;font-size:11px">2 ضد 2</button>
+    <button class="btn" data-size="3" style="padding:6px;font-size:11px">3 ضد 3</button>
+    <button class="btn" data-size="4" style="padding:6px;font-size:11px">4 ضد 4</button>
+    <button class="btn" data-size="5" style="padding:6px;font-size:11px;background:#22c55e;color:#000">5 ضد 5</button>
+    <button class="btn" data-size="6" style="padding:6px;font-size:11px">6 ضد 6</button>
+    <button class="btn" data-size="7" style="padding:6px;font-size:11px">7 ضد 7</button>
+    <button class="btn" data-size="8" style="padding:6px;font-size:11px">8 ضد 8</button>
+    <button class="btn" data-size="9" style="padding:6px;font-size:11px">9 ضد 9</button>
+    <button class="btn" data-size="10" style="padding:6px;font-size:11px">10 ضد 10</button>
+  </div>
+  <div id="selectedSizeInfo" style="font-size:11px;color:#4ade80;background:#0f172a;padding:6px;border-radius:6px;text-align:center;margin-bottom:8px">✅ المختار حاليا: <b>5 ضد 5</b> — الروم هيتقسم تلقائي</div>
   <div class="team-box" style="border-color:#38bdf8;color:#bae6fd;font-size:12px">👤 لن تظهر أي شخصيات وهمية هنا. يلزم ربط خادم أونلاين وقاعدة بيانات قبل دخول لاعبين حقيقيين.</div>
   <p style="font-size:11px;color:#38bdf8;background:#1e293b;padding:6px;border-radius:8px">⚠️ شرط البدء: أدخل رمز الغرفة وانتظر اتصال صديقك في الغرفة!</p>
   <input type="text" id="onlineRoomCode" placeholder="اكتب رمز الغرفة (مثال: MARO-99)" style="text-align:center">
@@ -634,7 +648,29 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
   };
 
   // ===== نظام الأونلاين 5 ضد 5 — الأساس الصح =====
-  const MARO_ONLINE = { teamSize: 5, maxPlayers: 10 };
+  const MARO_ONLINE = { teamSize: 5, maxPlayers: 20 }; // 10 ضد 10 = 20 لاعب
+
+
+  // ================= تقسيم تلقائي 1 ضد 1 لحد 10 ضد 10 =================
+  let maxTeamSize = 5;
+  function setTeamSize(size){
+    maxTeamSize = size;
+    const info = document.getElementById('selectedSizeInfo');
+    if(info) info.innerHTML = '✅ المختار حاليا: <b>' + size + ' ضد ' + size + '</b> — الروم هيتقسم تلقائي';
+    document.querySelectorAll('#teamSizeGrid button').forEach(function(b){
+      const isSel = parseInt(b.dataset.size) === size;
+      b.style.background = isSel ? '#22c55e' : '';
+      b.style.color = isSel ? '#000' : '';
+    });
+    if(typeof renderOnlineLobby === 'function') renderOnlineLobby();
+    if(typeof showToast === 'function') showToast('⚔️ اتختار ' + size + ' ضد ' + size + ' — الجيم هيتقسم تلقائي');
+  }
+  setTimeout(function(){
+    document.querySelectorAll('#teamSizeGrid button').forEach(function(b){
+      b.onclick = function(){ setTeamSize(parseInt(b.dataset.size)); };
+    });
+  }, 500);
+  // ================================================================
 
   // ===== ربط حقيقي P2P — 5 ضد 5 — PeerJS (مجاني، من غير سيرفر) =====
   const MARO_NET = { peer:null, conns:[], isHost:false, roomCode:'', myId:'', remotePlayers:{}, connected:false };
@@ -715,7 +751,7 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
     if(typeof Peer==='undefined'){ showToast('⚠️ محتاج نت'); return; }
     if(globalTrying) return; globalTrying=true;
     const gs=$('globalStatus'); if(gs){ gs.style.display='block'; gs.textContent='🌍 بتدور على لعيبة من العالم...'; }
-    netStatus('🌍 بتدور على ماتش عالمي 5 ضد 5...', '#4ade80');
+    netStatus('🌍 بتدور على ماتش عالمي...', '#4ade80');
     // جرب تبقى أنت الهوست العالمي
     try{ if(MARO_NET.peer) MARO_NET.peer.destroy(); }catch(e){}
     MARO_NET.conns=[]; MARO_NET.isHost=true; MARO_NET.roomCode='GLOBAL';
@@ -724,7 +760,7 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
     hostPeer.on('open', ()=>{
       // أنت أول واحد — أنت الهوست العالمي، استنى لعيبة
       MARO_NET.connected=true; MARO_NET.isHost=true;
-      netStatus('✅ أنت الهوست العالمي — مستني لعيبة من العالم (5 ضد 5)', '#4ade80');
+      netStatus('✅ أنت الهوست العالمي — مستني لعيبة من العالم', '#4ade80');
       if(gs) gs.textContent='✅ أنت الهوست العالمي — اللوبي مفتوح لأي حد في العالم، مستني لعيبة...';
       showToast('🌍 اللوبي العالمي اتفتح — أي حد هيدخل هيلاقيك');
       // حط نفسك في الحرامية أوتوماتيك
@@ -746,14 +782,22 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
           const conn=me.connect(GLOBAL_LOBBY_ID, { reliable:true });
           MARO_NET.conns=[conn]; netSetupConn(conn); MARO_NET.connected=true;
           netStatus('✅ دخلت ماتش عالمي — اختار فريقك', '#4ade80');
-          if(gs) gs.textContent='✅ دخلت ماتش عالمي — اختار فريقك، الفرق بتتوزع 5 ضد 5';
+          if(gs) gs.textContent='✅ دخلت ماتش عالمي — الفرق بتتوزع تلقائي حسب حجم الروم';
           globalTrying=false;
-          // توزيع أوتوماتيك: لو الحرامية أقل من البوليس روح حرامية، والعكس — عشان التوازن
+          // توزيع أوتوماتيك: 1 ضد 1 لحد 10 ضد 10 — يحترم حجم الروم المختار
           setTimeout(()=>{
+            const max = (typeof maxTeamSize !== 'undefined' ? maxTeamSize : 5);
             const rCount=onRobbers.length, cCount=onCops.length;
-            const wantTeam = rCount<=cCount ? 'robbers' : 'cops';
-            if(wantTeam==='robbers') $('joinOnRobbers').click(); else $('joinOnCops').click();
-          }, 600);
+            // لو أنت لسه مش في فريق
+            if(!onRobbers.some(p=>p.includes(playerName)) && !onCops.some(p=>p.includes(playerName))){
+              let wantTeam;
+              if(rCount>=max && cCount<max) wantTeam='cops';
+              else if(cCount>=max && rCount<max) wantTeam='robbers';
+              else if(rCount===1 && cCount===0) wantTeam='cops'; // لو الهوست حرامية، أنت بوليس عشان مش نفس الفريق
+              else wantTeam = rCount<=cCount ? 'robbers' : 'cops';
+              if(wantTeam==='robbers') $('joinOnRobbers').click(); else $('joinOnCops').click();
+            }
+          }, 1500);
         });
         me.on('error', ()=>{ netStatus('❌ مش لاقي ماتش عالمي دلوقتي — جرب تاني', '#f87171'); if(gs) gs.textContent='❌ مفيش ماتش عالمي دلوقتي — دوس تاني'; globalTrying=false; });
       } else {
@@ -777,11 +821,12 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
   }, 100);
 
   function renderOnlineLobby() {
-    const rc = $('robbersCount'); if(rc) rc.textContent = onRobbers.length + '/5';
-    const cc = $('copsCount'); if(cc) cc.textContent = onCops.length + '/5';
-    const jr = $('joinOnRobbers'); if(jr){ jr.disabled = onRobbers.length >= 5; jr.textContent = onRobbers.length >= 5 ? 'اكتمل 5/5' : 'انضم هنا'; }
-    const jc = $('joinOnCops'); if(jc){ jc.disabled = onCops.length >= 5; jc.textContent = onCops.length >= 5 ? 'اكتمل 5/5' : 'انضم هنا'; }
-    const sb = $('btnStartOnlineGame'); if(sb){ const total = onRobbers.length + onCops.length; sb.textContent = '🚀 بدء جيم الأونلاين (' + total + '/10)'; }
+    const max = (typeof maxTeamSize !== 'undefined' ? maxTeamSize : 5);
+    const rc = $('robbersCount'); if(rc) rc.textContent = onRobbers.length + '/' + max;
+    const cc = $('copsCount'); if(cc) cc.textContent = onCops.length + '/' + max;
+    const jr = $('joinOnRobbers'); if(jr){ jr.disabled = onRobbers.length >= max; jr.textContent = onRobbers.length >= max ? 'اكتمل ' + max + '/' + max : 'انضم هنا'; }
+    const jc = $('joinOnCops'); if(jc){ jc.disabled = onCops.length >= max; jc.textContent = onCops.length >= max ? 'اكتمل ' + max + '/' + max : 'انضم هنا'; }
+    const sb = $('btnStartOnlineGame'); if(sb){ const total = onRobbers.length + onCops.length; sb.textContent = '🚀 بدء جيم الأونلاين (' + total + '/' + (max*2) + ')'; }
     $('onRobbersList').innerHTML = onRobbers.length === 0
       ? `<div class="player-slot" style="color:#94a3b8">(الغرفة فارغة - في انتظار اتصال الأصدقاء...)</div>`
       : onRobbers.map(p => `<div class="player-slot"><span>🦹 ${p}</span><span style="color:#38bdf8">أونلاين 🌍</span></div>`).join('');
@@ -994,6 +1039,7 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
     const rm=$('btnRematch'); if(rm) rm.onclick=()=>{ $('matchEndModal').style.display='none'; paused=false; started=false; startBattle(); };
     const bl=$('btnBackToLobby'); if(bl) bl.onclick=()=>{ $('matchEndModal').style.display='none'; paused=false; started=false; document.body.classList.remove('playing'); $('hud').style.display='none'; $('controls').style.display='none'; $('modeModal').style.display='flex'; };
   }, 0);
+  function updateAliveHUD(){ const el = document.getElementById('aliveCount'); if(el) el.textContent = teamAlive.robbers + ' ضد ' + teamAlive.cops; }
   function startMatchTimer(){
     matchStartTime = Date.now(); matchEnded = false;
     if(matchTimerInterval) clearInterval(matchTimerInterval);
@@ -1021,9 +1067,16 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
   let quizTimerInterval = null, usedQuestionIndices = [];
 
   async function startBattle() {
-    robberScore = 0; copScore = 0; matchEnded = false; paused = false; playerOut = false; teamAlive = { robbers: 5, cops: 5 };
+    robberScore = 0; copScore = 0; matchEnded = false; paused = false; playerOut = false;
+    // التقسيم التلقائي: العدد الفعلي في اللوبي (1 ضد 1 لحد 10 ضد 10)
+    if(gameMode === 'online'){
+      const rC = onRobbers.length || 1, cC = onCops.length || 1;
+      teamAlive = { robbers: rC, cops: cC };
+    } else {
+      teamAlive = { robbers: maxTeamSize, cops: maxTeamSize };
+    }
     const mem=$('matchEndModal'); if(mem) mem.style.display='none';
-    startMatchTimer();
+    startMatchTimer(); if(typeof updateAliveHUD === 'function') updateAliveHUD();
     initAudio();
     document.body.classList.add('playing'); const hint=$('lookHint'); if(hint){hint.style.transition='opacity 2s';setTimeout(()=>hint.style.opacity='0',5000);}
     try { if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); } catch(e) {}
