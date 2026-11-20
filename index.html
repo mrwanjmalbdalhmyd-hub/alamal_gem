@@ -138,6 +138,35 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
  #sprintBtn{left:22px;bottom:140px;width:46px;height:46px}
 }
 </style>
+
+  <!-- Firebase - للعب الحقيقي أونلاين -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script>
+    // ===== حط الكونفيج بتاعك هنا بعد ما تعمل مشروع Firebase =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyBSXqnQLZRZgwa4K5as1Nj_GXjgs8h1z1k",
+      authDomain: "academy-attendance-d5a88.firebaseapp.com",
+      databaseURL: "https://academy-attendance-d5a88-default-rtdb.firebaseio.com",
+      projectId: "academy-attendance-d5a88",
+      storageBucket: "academy-attendance-d5a88.firebasestorage.app",
+      messagingSenderId: "1049112680070",
+      appId: "1:1049112680070:web:d370b344e5044887ae2307"
+    };
+    let fbApp = null, fbDb = null, fbPlayerId = 'p_' + Math.floor(Math.random()*1000000);
+    let fbRoomRef = null, fbPlayersRef = null;
+    try{
+      if(firebaseConfig.apiKey){
+        fbApp = firebase.initializeApp(firebaseConfig);
+        fbDb = firebase.database();
+        console.log('✅ Firebase شغال');
+      } else {
+        console.log('⚠️ لسه محتاج تحط كونفيج Firebase');
+      }
+    }catch(e){ console.log('Firebase error', e); }
+  </script>
+
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -258,7 +287,7 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
    <div id="hotCopsList"></div>
   </div>
 
-  <button class="btn btn-green" id="btnSimulateFriendHot" style="font-size:12px;padding:8px">📶 شرح توصيل هواتف الأصدقاء</button>
+  
   <button class="btn" id="btnStartHotspotGame">🚀 بدء معركة نقطة الاتصال</button>
   <button class="btn btn-red" id="btnBackModes1" style="width:100%;margin-top:8px">رجوع</button>
  </div>
@@ -307,7 +336,7 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
   <button class="btn btn-blue" id="btnJoinRoom" style="font-size:13px;padding:10px">🔗 دخول بالكود</button>
   <button class="btn" id="btnGlobalPlay" style="font-size:14px;padding:12px;background:linear-gradient(180deg,#22c55e,#15803d)">🌍 العب مع أي حد في العالم — بحث سريع 5 ضد 5</button>
   <div id="globalStatus" style="font-size:11px;color:#4ade80;background:#0f172a;padding:6px;border-radius:8px;text-align:center;display:none">🌍 بتدور على لعيبة من العالم...</div>
-  <button class="btn btn-purple" id="btnSimulateFriendOn" style="font-size:12px;padding:8px;display:none">🌐 حالة الاتصال الحقيقي</button>
+  
   <button class="btn btn-green" id="btnStartOnlineGame">🚀 بدء جيم الأونلاين</button>
   <button class="btn btn-red" id="btnBackModes2" style="width:100%;margin-top:8px">رجوع</button>
  </div>
@@ -633,7 +662,7 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
     myTeam = 'cops';
     renderHotspotLobby();
   };
-  $('btnSimulateFriendHot').onclick = () => showToast('📶 جميع الهواتف تحتاج نفس شبكة Wi-Fi وخادم محلي مشترك');
+  
   $('btnStartHotspotGame').onclick = () => {
     showToast('🔒 الاتصال الحقيقي غير مفعّل بعد. لن تبدأ المعركة قبل ربط خادم الهواتف'); return;
   };
@@ -652,6 +681,27 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
 
 
   // ================= تقسيم تلقائي 1 ضد 1 لحد 10 ضد 10 =================
+
+  // ================= حماية من الهكر =================
+  function sanitizeName(name){
+    if(!name) return 'لاعب';
+    return String(name).replace(/[<>"'&;`$\\]/g, '').substring(0, 15);
+  }
+  function isValidPos(x, y, z){
+    return typeof x==='number' && typeof y==='number' && typeof z==='number'
+      && Math.abs(x)<=400 && Math.abs(y)<=400 && Math.abs(z)<=400
+      && isFinite(x) && isFinite(y) && isFinite(z);
+  }
+  function isValidHp(hp){
+    return typeof hp==='number' && hp>=0 && hp<=100 && isFinite(hp);
+  }
+  if(typeof playerName !== 'undefined' && playerName) playerName = sanitizeName(playerName);
+  let fbAuthUid = null;
+  if(typeof firebase !== 'undefined' && firebase.auth){
+    firebase.auth().signInAnonymously().then(function(cred){ fbAuthUid = cred.user.uid; }).catch(function(e){ console.log('Auth', e); });
+  }
+  // =================================================
+
   let maxTeamSize = 5;
   function setTeamSize(size){
     maxTeamSize = size;
@@ -674,6 +724,89 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
 
   // ===== ربط حقيقي P2P — 5 ضد 5 — PeerJS (مجاني، من غير سيرفر) =====
   const MARO_NET = { peer:null, conns:[], isHost:false, roomCode:'', myId:'', remotePlayers:{}, connected:false };
+
+  // ================= Firebase - غرفة عالمية حقيقية + حماية =================
+  fbRoomRef = null; fbPlayersRef = null; fbOtherPlayers = {};
+  let fbSyncTimer = null;
+  function fbJoinGlobalRoom(){
+    if(!fbDb) return false;
+    try{
+      const size = (typeof maxTeamSize !== 'undefined' ? maxTeamSize : 5);
+      const roomName = 'global_' + size + 'v' + size;
+      fbRoomRef = fbDb.ref('rooms/' + roomName);
+      fbPlayersRef = fbRoomRef.child('players');
+      // امسح نفسك القديم لو موجود
+      fbPlayersRef.child(fbPlayerId).remove().catch(()=>{});
+      // وزع فريق: شوف مين موجود دلوقتي
+      fbPlayersRef.once('value').then(function(snap){
+        const vals = snap.val() || {};
+        let rC=0, cC=0;
+        Object.values(vals).forEach(function(p){ if(p && p.team==='robbers') rC++; if(p && p.team==='cops') cC++; });
+        // لو الروم مليان، متدخلش
+        if(rC >= size && cC >= size){ showToast('⚠️ الروم مليان - استنى الجيم الجاي'); return; }
+        if(rC <= cC){ myTeam='robbers'; } else { myTeam='cops'; }
+        // اكتب نفسك - كل لاعب بيكتب نفسه بس، محدش يقدر يكتب مكان حد تاني
+        const myData = { name: sanitizeName(playerName||'لاعب'), team: myTeam, x: Math.round(player.x||0), y: Math.round(player.y||0), z: Math.round(player.z||285), hp: 100, alive: true, yaw: 0, lastSeen: Date.now() };
+        fbPlayersRef.child(fbPlayerId).set(myData);
+        // لو خرجت، امسح نفسك أوتوماتيك
+        fbPlayersRef.child(fbPlayerId).onDisconnect().remove();
+        // اسمع لكل اللعيبة
+        fbPlayersRef.on('value', function(s2){
+          const all = s2.val() || {};
+          MARO_NET.remotePlayers = {};
+          fbOtherPlayers = {};
+          onRobbers=[]; onCops=[];
+          Object.keys(all).forEach(function(id){
+            const p = all[id];
+            if(!p) return;
+            // حماية: تجاهل بيانات مهكرة
+            if(typeof p.x!=='number' || typeof p.z!=='number' || typeof p.hp!=='number') return;
+            if(Math.abs(p.x)>400 || Math.abs(p.z)>400 || p.hp<0 || p.hp>100) return;
+            p.name = sanitizeName(p.name||'لاعب');
+            if(id === fbPlayerId){
+              // ده أنا - حدث فريقي
+              myTeam = p.team;
+              if(p.team==='robbers') onRobbers.push(p.name+' (أنت)');
+              else onCops.push(p.name+' (أنت)');
+            } else {
+              fbOtherPlayers[id]=p;
+              MARO_NET.remotePlayers[p.name||id] = { x:p.x, y:p.y||0, z:p.z, hp:p.hp, yaw:p.yaw||0, team:p.team, name:p.name, t:Date.now() };
+              if(p.team==='robbers') onRobbers.push(p.name);
+              else onCops.push(p.name);
+            }
+          });
+          if(typeof renderOnlineLobby==='function') renderOnlineLobby();
+          // لو الروم اكتمل، ابدأ
+          const total = Object.keys(all).length;
+          if(total >= 2 && typeof started !== 'undefined' && !started){
+            // استنى ثانية عشان الكل يدخل
+          }
+        });
+        // مزامنة مكانك كل 100ms
+        if(fbSyncTimer) clearInterval(fbSyncTimer);
+        fbSyncTimer = setInterval(fbSyncMyPosition, 100);
+        MARO_NET.connected = true;
+        return true;
+      });
+      return true;
+    }catch(e){ console.log('fbJoin error', e); return false; }
+  }
+  function fbSyncMyPosition(){
+    if(!fbPlayersRef || !started) return;
+    if(!isValidPos(player.x, player.y, player.z)) return;
+    if(!isValidHp(player.hp)) player.hp = Math.max(0, Math.min(100, player.hp||100));
+    try{
+      fbPlayersRef.child(fbPlayerId).update({
+        x: Math.round(player.x), y: Math.round(player.y||0), z: Math.round(player.z),
+        hp: Math.round(player.hp), alive: !playerOut, yaw: (typeof yaw!=='undefined'? yaw:0),
+        lastSeen: Date.now()
+      });
+    }catch(e){}
+  }
+  function fbUpdateAvatars(){
+    // اللعيبة البعيدين بيتعرضوا من MARO_NET.remotePlayers اللي Firebase بيحدثها
+  }
+  // =====================================================
   function netStatus(msg, color){ const el=$('netStatus'); if(el){ el.textContent=msg; el.style.color=color||'#facc15'; } }
   function netBroadcast(data){ try{ MARO_NET.conns.forEach(c=>{ if(c && c.open) c.send(data); }); }catch(e){} }
   function netSendToHost(data){ try{ const h=MARO_NET.conns[0]; if(h && h.open) h.send(data); }catch(e){} }
@@ -684,12 +817,23 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
     if(data.type==='join'){
       if(!MARO_NET.isHost) return;
       const name=data.name||'لاعب';
-      if(data.team==='cops'){
-        if(onCops.length>=5){ try{conn.send({type:'full', team:'cops'});}catch(e){} return; }
+      const max = (typeof maxTeamSize !== 'undefined' ? maxTeamSize : 5);
+      // لو الفريق فاضي أو مش محدد، وزع تلقائي على الفريق الأقل — عشان الاتنين مايبقوش نفس الفريق
+      let team = data.team;
+      if(!team || (team!=='robbers' && team!=='cops')){
+        if(onRobbers.length>0 && onCops.length===0) team='cops';
+        else if(onCops.length>0 && onRobbers.length===0) team='robbers';
+        else team = onRobbers.length<=onCops.length ? 'robbers' : 'cops';
+      }
+      // لو الفريق المختار اتملى، حطه في التاني
+      if(team==='cops' && onCops.length>=max) team='robbers';
+      if(team==='robbers' && onRobbers.length>=max) team='cops';
+      if(team==='cops'){
+        if(onCops.length>=max){ try{conn.send({type:'full', team:'cops'});}catch(e){} return; }
         onRobbers=onRobbers.filter(p=>!p.includes(name));
         if(!onCops.some(p=>p.includes(name))) onCops.push(name);
       } else {
-        if(onRobbers.length>=5){ try{conn.send({type:'full', team:'robbers'});}catch(e){} return; }
+        if(onRobbers.length>=max){ try{conn.send({type:'full', team:'robbers'});}catch(e){} return; }
         onCops=onCops.filter(p=>!p.includes(name));
         if(!onRobbers.some(p=>p.includes(name))) onRobbers.push(name);
       }
@@ -711,7 +855,8 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
     conn.on('close', ()=>{ MARO_NET.conns=MARO_NET.conns.filter(c=>c!==conn); if(MARO_NET.isHost){ netBroadcast(netLobbyPayload()); } });
     conn.on('open', ()=>{
       if(MARO_NET.isHost){ try{conn.send(netLobbyPayload());}catch(e){} }
-      else { try{conn.send({type:'join', name:playerName, team:myTeam});}catch(e){} }
+      // الضيف مايبعتش join على طول — يستنى اللوبي من الهوست الأول، وبعدين يختار الفريق الصح
+      // عشان كده شلنا السطر اللي كان بيبعت join بفريق فاضي وبيحط الاتنين في نفس الفريق
     });
   }
   function netCreateRoom(){
@@ -748,6 +893,16 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
   const GLOBAL_LOBBY_ID = 'maro-global-5v5-v1';
   let globalTrying = false;
   function netGlobalPlay(){
+    // لو Firebase شغال، استخدمه الأول - مزامنة حقيقية
+    if(typeof fbDb !== 'undefined' && fbDb){
+      const size = (typeof maxTeamSize !== 'undefined' ? maxTeamSize : 5);
+      // وزع تلقائي: لو الحرامية أقل، روح حرامية، والعكس
+      const rC = onRobbers.length, cC = onCops.length;
+      if(!onRobbers.some(p=>p.includes(playerName)) && !onCops.some(p=>p.includes(playerName))){
+        if(rC<=cC) { onRobbers.push(playerName+' (أنت)'); myTeam='robbers'; } else { onCops.push(playerName+' (أنت)'); myTeam='cops'; }
+      }
+      if(fbJoinGlobalRoom()){ showToast('🔥 دخلت روم Firebase ' + size + ' ضد ' + size + ' - مزامنة حقيقية'); netStatus('🔥 متصل بـ Firebase - ' + size + ' ضد ' + size, '#4ade80'); if(typeof renderOnlineLobby==='function') renderOnlineLobby(); return; }
+    }
     if(typeof Peer==='undefined'){ showToast('⚠️ محتاج نت'); return; }
     if(globalTrying) return; globalTrying=true;
     const gs=$('globalStatus'); if(gs){ gs.style.display='block'; gs.textContent='🌍 بتدور على لعيبة من العالم...'; }
@@ -797,7 +952,7 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
               else wantTeam = rCount<=cCount ? 'robbers' : 'cops';
               if(wantTeam==='robbers') $('joinOnRobbers').click(); else $('joinOnCops').click();
             }
-          }, 1500);
+          }, 2000);
         });
         me.on('error', ()=>{ netStatus('❌ مش لاقي ماتش عالمي دلوقتي — جرب تاني', '#f87171'); if(gs) gs.textContent='❌ مفيش ماتش عالمي دلوقتي — دوس تاني'; globalTrying=false; });
       } else {
@@ -837,26 +992,29 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
   }
 
   $('joinOnRobbers').onclick = () => {
-    const code = $('onlineRoomCode').value.trim();
-    if (!code) { showToast('⚠️ اكتب رمز الغرفة أولاً'); return; }
-    if (onRobbers.length >= 5 && !onRobbers.some(p => p.includes(playerName))) { showToast('⛔ فريق الحرامية اكتمل 5/5'); return; }
+    const max = (typeof maxTeamSize !== 'undefined' ? maxTeamSize : 5);
+    const code = (MARO_NET && MARO_NET.roomCode) ? MARO_NET.roomCode : ($('onlineRoomCode') ? $('onlineRoomCode').value.trim() : 'GLOBAL');
+    // في العالمي مش محتاج كود — لو مفيش كود ولا اتصال عالمي، اطلب كود
+    if (!code && !(MARO_NET && MARO_NET.connected)) { showToast('⚠️ دوس بحث سريع الأول'); return; }
+    if (onRobbers.length >= max && !onRobbers.some(p => p.includes(playerName))) { showToast('⛔ فريق الحرامية اكتمل ' + max + '/' + max); return; }
     onCops = onCops.filter(p => !p.includes(playerName));
-    if (!onRobbers.some(p => p.includes(playerName))) onRobbers.push(`${playerName} (أنت) [${code}]`);
+    if (!onRobbers.some(p => p.includes(playerName))) onRobbers.push(playerName + ' (أنت) [' + (code||'GLOBAL') + ']');
     myTeam = 'robbers';
     renderOnlineLobby();
     if(MARO_NET.connected && !MARO_NET.isHost) netSendToHost({type:'join', name:playerName, team:'robbers'}); if(MARO_NET.isHost) netBroadcast(netLobbyPayload());
   };
   $('joinOnCops').onclick = () => {
-    const code = $('onlineRoomCode').value.trim();
-    if (!code) { showToast('⚠️ اكتب رمز الغرفة أولاً'); return; }
-    if (onCops.length >= 5 && !onCops.some(p => p.includes(playerName))) { showToast('⛔ فريق البوليس اكتمل 5/5'); return; }
+    const max = (typeof maxTeamSize !== 'undefined' ? maxTeamSize : 5);
+    const code = (MARO_NET && MARO_NET.roomCode) ? MARO_NET.roomCode : ($('onlineRoomCode') ? $('onlineRoomCode').value.trim() : 'GLOBAL');
+    if (!code && !(MARO_NET && MARO_NET.connected)) { showToast('⚠️ دوس بحث سريع الأول'); return; }
+    if (onCops.length >= max && !onCops.some(p => p.includes(playerName))) { showToast('⛔ فريق البوليس اكتمل ' + max + '/' + max); return; }
     onRobbers = onRobbers.filter(p => !p.includes(playerName));
-    if (!onCops.some(p => p.includes(playerName))) onCops.push(`${playerName} (أنت) [${code}]`);
+    if (!onCops.some(p => p.includes(playerName))) onCops.push(playerName + ' (أنت) [' + (code||'GLOBAL') + ']');
     myTeam = 'cops';
     renderOnlineLobby();
     if(MARO_NET.connected && !MARO_NET.isHost) netSendToHost({type:'join', name:playerName, team:'cops'}); if(MARO_NET.isHost) netBroadcast(netLobbyPayload());
   };
-  $('btnSimulateFriendOn').onclick = () => showToast('🌍 سنربط الغرف بخادم Firebase أو WebSocket في مرحلة الشبكة التالية');
+  
   $('btnStartOnlineGame').onclick = () => {
     if(MARO_NET.connected){ if(MARO_NET.isHost){ netBroadcast({type:'start'}); $('onlineModal').style.display='none'; startBattle(); } else { showToast('⏳ استنى الهوست يبدأ الجيم'); } return; }
     showToast('⚠️ أنشئ روم أو ادخل بكود الأول'); return;
@@ -1040,6 +1198,8 @@ button.btn-red{background:#ef4444;color:#fff;padding:5px 9px;font-size:11px;widt
     const bl=$('btnBackToLobby'); if(bl) bl.onclick=()=>{ $('matchEndModal').style.display='none'; paused=false; started=false; document.body.classList.remove('playing'); $('hud').style.display='none'; $('controls').style.display='none'; $('modeModal').style.display='flex'; };
   }, 0);
   function updateAliveHUD(){ const el = document.getElementById('aliveCount'); if(el) el.textContent = teamAlive.robbers + ' ضد ' + teamAlive.cops; }
+  // مزامنة Firebase في كل فريم
+  const _origAnimate = typeof animate !== 'undefined' ? animate : null;
   function startMatchTimer(){
     matchStartTime = Date.now(); matchEnded = false;
     if(matchTimerInterval) clearInterval(matchTimerInterval);
